@@ -2,6 +2,10 @@ class ParserError(Exception):
     pass
 
 
+class EmptyRecievedError(ParserError):
+    pass
+
+
 class BadMethod(ParserError):
     pass
 
@@ -15,10 +19,12 @@ class BadVersion(ParserError):
 
 
 class Parser:
-    def __init__(self, received: bytes):
+    def __init__(self, received: str):
         self._source = received
         lines = received.split('\n')
         head_line = lines[0].split()
+        if not self._source or not head_line:
+            raise EmptyRecievedError(f'empty recieved')
         self.method = head_line[0].strip()
         self.path = head_line[1].strip()
         self.version = head_line[2].strip()
@@ -52,11 +58,13 @@ class Parser:
 
 
 def receive_on_socket(sock):
+    _chunk_size = 1024
     chunks = []
     bytes_recd = 0
+    sock.settimeout(1)
     while True:
-        chunk = sock.recv(2048)
-        if chunk == b'':
+        chunk = sock.recv(_chunk_size)
+        if chunk == b'' or chunk.endswith(b'\r\n\r\n'):
             break
         chunks.append(chunk)
         bytes_recd += len(chunk)

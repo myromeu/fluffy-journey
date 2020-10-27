@@ -2,3 +2,4 @@
 02_internals/
 05_automatization/
 08_views/
+**/__pycache__/**

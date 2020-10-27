@@ -3,10 +3,18 @@ import argparse
 import socket
 
 from document_root import DocumentRootHelper, FileNotFound, DirectoryNotFound
-from request import receive_on_socket, Parser, BadVersion, BadPath, BadMethod
+from request import (
+    receive_on_socket,
+    Parser,
+    EmptyRecievedError,
+    BadVersion,
+    BadPath,
+    BadMethod
+)
 
 STATUS_TO_CODE = {
     200: 'OK',
+    400: 'Bad Request',
     404: 'Not Found',
 }
 
@@ -31,7 +39,8 @@ def create_response(status, headers=None, body=None):
     headers.update({'Server': 'little_0.01'})
     if body is None:
         body = ''
-    response = start + '\r\n' + '\r\n'.join([f'{k}: {v}' for k, v in headers.items()]) + '\r\n\r\n' + body + '\r\n\r\n'
+    headers['Content-Length'] = len(body)
+    response = start + '\r\n' + '\r\n'.join([f'{k}: {str(v)}' for k, v in headers.items()]) + '\r\n\r\n' + body + '\r\n\r\n'
     return response
 
 
@@ -41,29 +50,34 @@ def handle_request(client, doc_root_helper):
     received, length = receive_on_socket(client)
     try:
         request_parser = Parser(received.decode())
-    except (BadMethod, BadPath, BadVersion) as e:
+    except (EmptyRecievedError, BadMethod, BadPath, BadVersion) as e:
         print('Parse Error:', str(e))
     else:
         print(f'Request: {request_parser.method} {request_parser.path} {request_parser.version}\n')
+        if request_parser.method == 'GET':
 
-        if request_parser.is_file():
-            try:
-                body_content = doc_root_helper.get_file_content(request_parser.get_path())
-            except FileNotFound:
-                status = 404
-                body_content = f'file {request_parser.path} not found'
-        elif request_parser.is_dir():
-            try:
-                body_content = doc_root_helper.get_dir_index_file_content(request_parser.get_path())
-            except DirectoryNotFound:
-                status = 404
-                body_content = f'index.html does not exist in {request_parser.path} directory'
-            except Exception as e:
-                print(f'Error is shouted: {e}')
+            if request_parser.is_file():
+                try:
+                    body_content = doc_root_helper.get_file_content(request_parser.get_path())
+                except FileNotFound:
+                    status = 404
+                    body_content = f'file {request_parser.path} not found'
+            elif request_parser.is_dir():
+                try:
+                    body_content = doc_root_helper.get_dir_index_file_content(request_parser.get_path())
+                except DirectoryNotFound:
+                    status = 404
+                    body_content = f'index.html does not exist in {request_parser.path} directory'
+                except Exception as e:
+                    print(f'Error is shouted: {e}')
+
+        else:
+            status = 400
+            body_content = f'Unsupported method {request_parser.method}'
+            print(body_content)
 
     response = create_response(
         status=status,
-        headers={'Content-Length': len(body_content)},
         body=body_content
     )
     client.sendall(response.encode())
@@ -73,9 +87,12 @@ def run_server(host, port, doc_root_helper):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind((host, port))
     s.listen(5)
-    print('Strart listening...')
+    print('Start listening...')
+    requests = 0
     while True:
         c, a = s.accept()
+        requests += 1
+        print(f'request {requests}')
         print(f'Connection from {a}')
         handle_request(client=c, doc_root_helper=doc_root_helper)
         c.close()
