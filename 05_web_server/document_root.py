@@ -19,9 +19,13 @@ class DirectoryNotFound(NotFound):
 class DocumentRootHelper:
     def __init__(self, document_root: str):
         self.document_root = document_root
+    
+    def _encoded_path(self, path):
+        encoded_path = path.replace("%20"," ")
+        return os.path.join(self.document_root, encoded_path)
 
     def get_file_content(self, file_path):
-        full_path = os.path.join(self.document_root, file_path)
+        full_path = self._encoded_path(file_path)
         try:
             ext = full_path.rsplit(sep='.', maxsplit=1)[-1]
         except IndexError:
@@ -35,7 +39,7 @@ class DocumentRootHelper:
             return f.read()
 
     def get_dir_index_file_content(self, dir_path):
-        full_dir_path = os.path.join(self.document_root, dir_path)
+        full_dir_path = self._encoded_path(dir_path)
         if not os.path.isdir(full_dir_path):
             raise DirectoryNotFound(f'dir {full_dir_path} not found')
 
