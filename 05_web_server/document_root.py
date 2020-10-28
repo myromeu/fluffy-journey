@@ -1,7 +1,21 @@
 import os
+import urllib.parse
 
 
-BINARY_FILES_EXTENSIONS = ['gif', 'jpeg', 'jpg', 'png', 'swf']
+BINARY_FILES_EXTENSIONS = ['.gif', '.jpeg', '.jpg', '.png', '.swf']
+
+EXTENSION_TO_CTYPE = {
+    '.html': 'text/html',
+    '.css': 'text/css',
+    '.js': 'text/javascript',
+    '.gif': 'image/gif',
+    '.jpeg': 'image/jpeg',
+    '.jpg': 'image/jpeg',
+    '.png': 'image/png',
+    '.swf': 'application/x-shockwave-flash',
+    '.txt': 'text/plain',
+    '': '',
+}
 
 
 class NotFound(Exception):
@@ -21,15 +35,20 @@ class DocumentRootHelper:
         self.document_root = document_root
     
     def _encoded_path(self, path):
-        encoded_path = path.replace("%20"," ")
+        encoded_path = urllib.parse.unquote(path)
         return os.path.join(self.document_root, encoded_path)
+    
+    def extension(self, full_path):
+        ext = ''
+        try:
+            _, ext = os.path.splitext(full_path)
+        except IndexError:
+            ...
+        return ext
 
     def get_file_content(self, file_path):
         full_path = self._encoded_path(file_path)
-        try:
-            ext = full_path.rsplit(sep='.', maxsplit=1)[-1]
-        except IndexError:
-            ext = ''
+        ext = self.extension(full_path)
         mode = 'rt'
         if ext in BINARY_FILES_EXTENSIONS:
             mode = 'rb'

@@ -47,6 +47,7 @@ def parse_args():
 
 def handle_request(client, doc_root_helper):
     response_obj = Response()
+    headers = None
     received, length = receive_on_socket(client)
     try:
         request_parser = RequestParser(received.decode())
@@ -58,12 +59,13 @@ def handle_request(client, doc_root_helper):
         print(f'Request: {request_parser.method} {request_parser.path} {request_parser.version}\n')
         handler = HTTP_HANDLERS.get(request_parser.method, empty_handler)
 
-        response_obj = handler(method=request_parser.method,
-                               request_parser=request_parser,
-                               doc_root_helper=doc_root_helper)
+        response_obj, headers = handler(method=request_parser.method,
+                                        request_parser=request_parser,
+                                        doc_root_helper=doc_root_helper)
 
     response = create_response(
         status=response_obj.status,
+        headers=headers,
         body=response_obj.body
     )
     client.sendall(response.encode())

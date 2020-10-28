@@ -1,5 +1,5 @@
 from document_root import (
-    FileNotFound, DirectoryNotFound
+    FileNotFound, DirectoryNotFound, EXTENSION_TO_CTYPE
 )
 
 from status import STATUS_TO_CODE
@@ -29,7 +29,7 @@ def empty_handler(*, method=None, request_parser=None, doc_root_helper=None, **k
     body_content = 'Unsupported method'
     if method:
         body_content = f'Unsupported method `{method}``'
-    return Response(body=body_content) 
+    return Response(body=body_content), {}
 
 
 def get_handler(*, method=None, request_parser=None, doc_root_helper=None, **kwargs):
@@ -37,9 +37,11 @@ def get_handler(*, method=None, request_parser=None, doc_root_helper=None, **kwa
     assert doc_root_helper
     status = 200
     body_content = None
+    headers = {}
     if request_parser.is_file():
         try:
             body_content = doc_root_helper.get_file_content(request_parser.get_path())
+            headers['Content-Type'] = EXTENSION_TO_CTYPE[doc_root_helper.extension(request_parser.get_path())]
         except FileNotFound:
             status = 404
             body_content = f'file {request_parser.path} not found'
@@ -51,12 +53,12 @@ def get_handler(*, method=None, request_parser=None, doc_root_helper=None, **kwa
             body_content = f'index.html does not exist in {request_parser.path} directory'
         except Exception as e:
             print(f'Error is shouted: {e}')
-    return Response(status=status, body=body_content)
+    return Response(status=status, body=body_content), headers
 
 
 def post_handler(*, method=None, request_parser=None, doc_root_helper=None, **kwargs):
-    return Response(body='POST method not implemented')
+    return Response(body='POST method not implemented'), {}
 
 
 def head_handler(*, method=None, request_parser=None, doc_root_helper=None, **kwargs):
-    return Response(body='HEAD method not implemented')
+    return Response(body='HEAD method not implemented'), {}
