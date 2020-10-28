@@ -14,11 +14,15 @@ class BadPath(ParserError):
     pass
 
 
+class Forbidden(BadPath):
+    pass
+
+
 class BadVersion(ParserError):
     pass
 
 
-class Parser:
+class RequestParser:
     def __init__(self, received: str):
         self._source = received
         lines = received.split('\n')
@@ -35,6 +39,20 @@ class Parser:
             raise BadPath(f'bad path: {self.path}')
         if not self.version:
             raise BadVersion(f'bad version: {self.version}')
+
+        if '../' in self.path:
+            raise Forbidden(f'document root escaping forbidden: {self.path}')
+        
+        self.query_string = ''
+        try:
+            end_of_path = self.path.rsplit(sep='/', maxsplit=1)[-1]
+        except IndexError:
+            pass
+        else:
+            if '?' in end_of_path:
+                splited = self.path.rsplit(sep='?')
+                self.path = splited[0]
+                self.query_string = splited[1:]
 
     def _ends_with_slash(self):
         if not self.path.endswith('/'):
@@ -64,8 +82,8 @@ def receive_on_socket(sock):
     sock.settimeout(1)
     while True:
         chunk = sock.recv(_chunk_size)
-        if chunk == b'' or chunk.endswith(b'\r\n\r\n'):
-            break
         chunks.append(chunk)
         bytes_recd += len(chunk)
+        if chunk == b'' or chunk.endswith(b'\r\n\r\n'):
+            break
     return b''.join(chunks), bytes_recd

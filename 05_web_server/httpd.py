@@ -1,21 +1,34 @@
 import os
 import argparse
 import socket
+import threading
 
 from document_root import DocumentRootHelper, FileNotFound, DirectoryNotFound
 from request import (
     receive_on_socket,
-    Parser,
+    RequestParser,
     EmptyRecievedError,
     BadVersion,
     BadPath,
+    Forbidden,
     BadMethod
 )
 
-STATUS_TO_CODE = {
-    200: 'OK',
-    400: 'Bad Request',
-    404: 'Not Found',
+from response import (
+    Response,
+    create_response,
+    empty_handler,
+    get_handler,
+    post_handler,
+    head_handler
+)
+
+from status import STATUS_TO_CODE
+
+HTTP_HANDLERS = {
+    'GET': get_handler,
+    'POST': post_handler,
+    'HEAD': head_handler,
 }
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -32,55 +45,29 @@ def parse_args():
     return args
 
 
-def create_response(status, headers=None, body=None):
-    start = f'HTTP/1.1 {status} {STATUS_TO_CODE[status]}'
-    if headers is None:
-        headers = {}
-    headers.update({'Server': 'little_0.01'})
-    if body is None:
-        body = ''
-    headers['Content-Length'] = len(body)
-    response = start + '\r\n' + '\r\n'.join([f'{k}: {str(v)}' for k, v in headers.items()]) + '\r\n\r\n' + body + '\r\n\r\n'
-    return response
-
-
 def handle_request(client, doc_root_helper):
-    status = 200
-    body_content = None
+    response_obj = Response()
     received, length = receive_on_socket(client)
     try:
-        request_parser = Parser(received.decode())
+        request_parser = RequestParser(received.decode())
+    except Forbidden as e:
+        response_obj = Response(status=403)
     except (EmptyRecievedError, BadMethod, BadPath, BadVersion) as e:
         print('Parse Error:', str(e))
     else:
         print(f'Request: {request_parser.method} {request_parser.path} {request_parser.version}\n')
-        if request_parser.method == 'GET':
+        handler = HTTP_HANDLERS.get(request_parser.method, empty_handler)
 
-            if request_parser.is_file():
-                try:
-                    body_content = doc_root_helper.get_file_content(request_parser.get_path())
-                except FileNotFound:
-                    status = 404
-                    body_content = f'file {request_parser.path} not found'
-            elif request_parser.is_dir():
-                try:
-                    body_content = doc_root_helper.get_dir_index_file_content(request_parser.get_path())
-                except DirectoryNotFound:
-                    status = 404
-                    body_content = f'index.html does not exist in {request_parser.path} directory'
-                except Exception as e:
-                    print(f'Error is shouted: {e}')
-
-        else:
-            status = 400
-            body_content = f'Unsupported method {request_parser.method}'
-            print(body_content)
+        response_obj = handler(method=request_parser.method,
+                               request_parser=request_parser,
+                               doc_root_helper=doc_root_helper)
 
     response = create_response(
-        status=status,
-        body=body_content
+        status=response_obj.status,
+        body=response_obj.body
     )
     client.sendall(response.encode())
+    client.close()
 
 
 def run_server(host, port, doc_root_helper):
@@ -90,12 +77,17 @@ def run_server(host, port, doc_root_helper):
     print('Start listening...')
     requests = 0
     while True:
+        # print(f'Running threads {len(threading.enumerate())}')
         c, a = s.accept()
         requests += 1
         print(f'request {requests}')
-        print(f'Connection from {a}')
-        handle_request(client=c, doc_root_helper=doc_root_helper)
-        c.close()
+        handle_request(c, doc_root_helper)
+        # thread_handler = threading.Thread(
+        #     target=handle_request,
+        #     kwargs={'client': c, 'doc_root_helper': doc_root_helper}
+        # )
+        # # todo: current working threads
+        # thread_handler.start()
 
 
 def main():
@@ -105,5 +97,4 @@ def main():
 
 
 if __name__ == '__main__':
-    print(BASE_DIR)
     main()

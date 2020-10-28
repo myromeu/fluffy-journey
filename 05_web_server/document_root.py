@@ -1,6 +1,9 @@
 import os
 
 
+BINARY_FILES_EXTENSIONS = ['gif', 'jpeg', 'jpg', 'png', 'swf']
+
+
 class NotFound(Exception):
     pass
 
@@ -19,9 +22,16 @@ class DocumentRootHelper:
 
     def get_file_content(self, file_path):
         full_path = os.path.join(self.document_root, file_path)
+        try:
+            ext = full_path.rsplit(sep='.', maxsplit=1)[-1]
+        except IndexError:
+            ext = ''
+        mode = 'rt'
+        if ext in BINARY_FILES_EXTENSIONS:
+            mode = 'rb'
         if not os.path.isfile(full_path):
             raise FileNotFound(f'file {file_path} not found')
-        with open(full_path) as f:
+        with open(full_path, mode=mode) as f:
             return f.read()
 
     def get_dir_index_file_content(self, dir_path):
