@@ -51,6 +51,9 @@ def get_handler(*, method=None, request_parser=None, doc_root_helper=None, **kwa
         except DirectoryNotFound:
             status = 404
             body_content = f'index.html does not exist in {request_parser.path} directory'
+        except FileNotFound as e:
+            status = 404
+            body_content = str(e)
         except Exception as e:
             print(f'Error is shouted: {e}')
     return Response(status=status, body=body_content), headers

@@ -64,6 +64,6 @@ class DocumentRootHelper:
 
         full_path = os.path.join(full_dir_path, 'index.html')
         if not os.path.isfile(full_path):
-            raise NotImplementedError('need list dir contents here')
+            raise FileNotFound(f'index file absent in directory {dir_path}')
         with open(full_path) as f:
             return f.read()
