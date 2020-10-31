@@ -18,11 +18,8 @@ def create_response(status, headers=None, body=None):
     if headers is None:
         headers = {}
     headers.update({'Server': 'little_0.01'})
-    if body is None:
-        body = ''
-    headers['Content-Length'] = len(body)
-    response = start + '\r\n' + '\r\n'.join([f'{k}: {str(v)}' for k, v in headers.items()]) + '\r\n\r\n' + str(body) + '\r\n\r\n'
-    return response
+    response_body = '' if body is None else str(body) + '\r\n\r\n'
+    return start + '\r\n' + '\r\n'.join([f'{k}: {str(v)}' for k, v in headers.items()]) + '\r\n\r\n' + response_body
 
 
 def empty_handler(*, method=None, request_parser=None, doc_root_helper=None, **kwargs):
@@ -56,6 +53,7 @@ def get_handler(*, method=None, request_parser=None, doc_root_helper=None, **kwa
             body_content = str(e)
         except Exception as e:
             print(f'Error is shouted: {e}')
+    headers['Content-Length'] = len(body_content)
     return Response(status=status, body=body_content), headers
 
 
@@ -64,4 +62,6 @@ def post_handler(*, method=None, request_parser=None, doc_root_helper=None, **kw
 
 
 def head_handler(*, method=None, request_parser=None, doc_root_helper=None, **kwargs):
-    return Response(body='HEAD method not implemented'), {}
+    response, headers = get_handler(method=method, request_parser=request_parser, doc_root_helper=doc_root_helper, **kwargs)
+    response.body = None
+    return response, headers
