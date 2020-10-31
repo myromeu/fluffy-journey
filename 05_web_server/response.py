@@ -1,8 +1,12 @@
+import logging
 from document_root import (
     FileNotFound, DirectoryNotFound, EXTENSION_TO_CTYPE
 )
 
 from status import STATUS_TO_CODE
+
+logger = logging.getLogger('response.py')
+
 
 class Response:
     def __init__(self, *,  status=405, body=None):
@@ -52,7 +56,7 @@ def get_handler(*, method=None, request_parser=None, doc_root_helper=None, **kwa
             status = 404
             body_content = str(e)
         except Exception as e:
-            print(f'Error is shouted: {e}')
+            logger.error(f'Error is shouted: {e}')
     if isinstance(body_content, bytes):
         headers['Content-Length'] = len(body_content)
     elif isinstance(body_content, str):

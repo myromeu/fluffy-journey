@@ -1,5 +1,6 @@
 import os
 import time
+import logging
 import argparse
 import socket
 import threading
@@ -35,6 +36,15 @@ HTTP_HANDLERS = {
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
+def setup_logging():
+    logging.basicConfig(
+        level=logging.DEBUG,
+        datefmt='%Y-%m-%d-%H-%M-%S',
+        filename='log.log',
+        format='%(asctime)s  %(levelname)-10s %(processName)s  %(name)s %(message)s'
+    )
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-w', dest='workers', type=int, help='count of workers', default=4)
@@ -42,7 +52,7 @@ def parse_args():
     parser.add_argument('-H', dest='host', type=str, help='host', default='localhost')
     parser.add_argument('-p', dest='port', type=int, help='port', default=8080)
     args = parser.parse_args()
-    print(args.__dict__)
+    logging.info(args.__dict__)
     return args
 
 
@@ -55,9 +65,9 @@ def handle_request(client, doc_root_helper):
     except Forbidden as e:
         response_obj = Response(status=403)
     except (EmptyRecievedError, BadMethod, BadPath, BadVersion) as e:
-        print('Parse Error:', str(e))
+        logging.error('Parse Error: %s', str(e))
     else:
-        print(f'Request: {request_parser.method} {request_parser.path} {request_parser.version}\n')
+        logging.info(f'Request: {request_parser.method} {request_parser.path} {request_parser.version}')
         handler = HTTP_HANDLERS.get(request_parser.method, empty_handler)
 
         response_obj, headers = handler(method=request_parser.method,
@@ -69,32 +79,34 @@ def handle_request(client, doc_root_helper):
         headers=headers,
         body=response_obj.body
     )
+    logging.debug('Response: %s', response[:15])
     client.sendall(response.encode())
-    # client.close()
+    client.close()
 
 
 def run_server(host, port, workers, doc_root_helper):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind((host, port))
-    s.listen(5)
-    print('Start listening...')
+    s.listen(150)
+    logging.info('Start listening...')
     requests = 0
     while True:
-        active_workers = len(threading.enumerate())
-        print('current threads:', active_workers)
+        print([x.name for x in threading.enumerate()])
         c, a = s.accept()
         requests += 1
-        print(f'request {requests}')
+        logging.debug(f'request {requests}')
         thread_handler = threading.Thread(
             target=handle_request,
             kwargs={'client': c, 'doc_root_helper': doc_root_helper}
         )
-        while active_workers > workers:
-            time.sleep(1)
+        thread_handler.setName(f'request #{requests}')
+        while threading.active_count() > workers + 1:
+            time.sleep(0.1)
         thread_handler.start()
 
 
 def main():
+    setup_logging()
     server_args = parse_args()
     document_root_helper = DocumentRootHelper(document_root=os.path.join(BASE_DIR, server_args.document_root))
     run_server(host=server_args.host, port=server_args.port, workers=server_args.workers, doc_root_helper=document_root_helper)
