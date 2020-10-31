@@ -10,7 +10,7 @@ class Response:
         self.body = body or ''
 
     def content_length(self):
-        return len(body) if self.body else 0
+        return len(self.body) if self.body else 0
 
 
 def create_response(status, headers=None, body=None):
@@ -53,7 +53,12 @@ def get_handler(*, method=None, request_parser=None, doc_root_helper=None, **kwa
             body_content = str(e)
         except Exception as e:
             print(f'Error is shouted: {e}')
-    headers['Content-Length'] = len(body_content)
+    if isinstance(body_content, bytes):
+        headers['Content-Length'] = len(body_content)
+    elif isinstance(body_content, str):
+        headers['Content-Length'] = len(body_content.encode())
+    else:
+        raise Exception('Not supported type of body_content')
     return Response(status=status, body=body_content), headers
 
 

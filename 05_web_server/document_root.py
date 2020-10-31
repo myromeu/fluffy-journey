@@ -33,11 +33,11 @@ class DirectoryNotFound(NotFound):
 class DocumentRootHelper:
     def __init__(self, document_root: str):
         self.document_root = document_root
-    
+
     def _encoded_path(self, path):
         encoded_path = urllib.parse.unquote(path)
         return os.path.join(self.document_root, encoded_path)
-    
+
     def extension(self, full_path):
         ext = ''
         try:

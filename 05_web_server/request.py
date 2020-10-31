@@ -79,7 +79,6 @@ def receive_on_socket(sock):
     _chunk_size = 1024
     chunks = []
     bytes_recd = 0
-    sock.settimeout(1)
     while True:
         chunk = sock.recv(_chunk_size)
         chunks.append(chunk)
