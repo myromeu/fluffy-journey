@@ -4,6 +4,7 @@ import logging
 import argparse
 import socket
 import threading
+from datetime import datetime
 
 from document_root import DocumentRootHelper, FileNotFound, DirectoryNotFound
 from request import (
@@ -26,6 +27,8 @@ from response import (
 )
 
 from status import STATUS_TO_CODE
+
+from utils import httpdate
 
 HTTP_HANDLERS = {
     'GET': get_handler,
@@ -73,6 +76,7 @@ def handle_request(client, doc_root_helper):
         response_obj, headers = handler(method=request_parser.method,
                                         request_parser=request_parser,
                                         doc_root_helper=doc_root_helper)
+        headers['Date'] = httpdate(datetime.now())
 
     response = create_response(
         status=response_obj.status,

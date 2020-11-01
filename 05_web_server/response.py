@@ -21,7 +21,7 @@ def create_response(status, headers=None, body=None):
     start = f'HTTP/1.1 {status} {STATUS_TO_CODE[status]}'
     if headers is None:
         headers = {}
-    headers.update({'Server': 'little_0.01'})
+    headers.update({'Server': 'legless'})
     response_body = '' if body is None else str(body) + '\r\n\r\n'
     return start + '\r\n' + '\r\n'.join([f'{k}: {str(v)}' for k, v in headers.items()]) + '\r\n\r\n' + response_body
 
@@ -63,6 +63,12 @@ def get_handler(*, method=None, request_parser=None, doc_root_helper=None, **kwa
         headers['Content-Length'] = len(body_content.encode())
     else:
         raise Exception('Not supported type of body_content')
+
+    # проставление Content-Type если отсутствует
+    headers.setdefault('Content-Type', 'text/plain')
+
+    headers['Connection'] = 'close'
+
     return Response(status=status, body=body_content), headers
 
 
