@@ -28,7 +28,7 @@ class RequestParser:
         lines = received.split('\n')
         head_line = lines[0].split()
         if not self._source or not head_line:
-            raise EmptyRecievedError(f'empty recieved')
+            raise EmptyRecievedError('empty recieved')
         self.method = head_line[0].strip()
         self.path = head_line[1].strip()
         self.version = head_line[2].strip()
@@ -42,7 +42,7 @@ class RequestParser:
 
         if '../' in self.path:
             raise Forbidden(f'document root escaping forbidden: {self.path}')
-        
+
         self.query_string = ''
         try:
             end_of_path = self.path.rsplit(sep='/', maxsplit=1)[-1]
