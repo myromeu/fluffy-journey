@@ -7,11 +7,7 @@ import glob
 import logging
 import collections
 from optparse import OptionParser
-# brew install protobuf
-# protoc  --python_out=. ./appsinstalled.proto
-# pip install protobuf
 import appsinstalled_pb2
-# pip install python-memcached
 import memcache
 
 NORMAL_ERR_RATE = 0.01
@@ -74,7 +70,7 @@ def main(options):
     for fn in glob.iglob(options.pattern):
         processed = errors = 0
         logging.info('Processing %s' % fn)
-        fd = gzip.open(fn)
+        fd = gzip.open(fn, mode='rt')
         for line in fd:
             line = line.strip()
             if not line:
@@ -133,7 +129,7 @@ if __name__ == '__main__':
     op.add_option("--gaid", action="store", default="127.0.0.1:33014")
     op.add_option("--adid", action="store", default="127.0.0.1:33015")
     op.add_option("--dvid", action="store", default="127.0.0.1:33016")
-    (opts, args) = op.parse_args()
+    opts, args = op.parse_args()
     logging.basicConfig(filename=opts.log, level=logging.INFO if not opts.dry else logging.DEBUG,
                         format='[%(asctime)s] %(levelname).1s %(message)s', datefmt='%Y.%m.%d %H:%M:%S')
     if opts.test:
